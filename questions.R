@@ -1,17 +1,56 @@
+source("import_helpers.R")
+library(ggplot2)
+
+# How many unique pokemon ids are there?
+q1 <- function(pokemon_data) {
+  id_unique_count <- length(unique(pokemon_data$id))
+  sprintf("There are %d unique pokemon ids in the dataset.\n", id_unique_count)
+  id_unique_count
+}
+
+# What does the left-side-wins space look like?
+q2 <- function(combat_left_side_wins_table) {
+  graphics.off()
+  par(pty="s")
+  image(combat_left_side_wins_table,
+        useRaster=TRUE,
+        xaxt="none",
+        yaxt="none")
+  x <- ncol(combat_left_side_wins_table)
+  at <- seq(0.0, 1.0, 0.125)
+  labels <- as.character(seq(0, x, round(x/8)))
+  axis(1, at=at, labels=labels)
+  axis(2, at=at, labels=labels)
+  png("q2.png")
+}
+
+# What fraction of coverage of the space is there in the dataset?
+q3 <- function(pokemon_data,combat_data) {
+  all_uids <- q1(pokemon_data)
+  population_count <- all_uids*all_uids
+  sample_count <- nrow(combat_data)
+  coverage_ratio <- sample_count/population_count
+  coverage_percent <- coverage_ratio*100
+  sprintf("The coverage ratio of the population space is %.2f%%\n", coverage_percent)
+  coverage_ratio
+}
+
 # how many repeat battles are there?
-q0 <- function(combats) {
-  coverage <- table(combats[,1:2])
-  symmetric_count <- sum(colSums(pmin(coverage,t(coverage))))
+q4 <- function(pokemon_data,combat_data,combat_left_side_wins_table) {
+  symmetric_count <- sum(colSums(pmin(combat_left_side_wins_table,t(combat_left_side_wins_table))))
+  symmetric_percent <- symmetric_count/nrow(combat_data)*100
+  print(sprintf("There are %d repeat battles, which is %.2f%% of all battles.\n", symmetric_count, symmetric_percent))
+  symmetric_count
 }
 
 # Which type is most likely to win?
 # legendary-fighting, just ahead of legendary-grass and legendary-normal
 # of non-legendary, it is flying, then dark, then electric
-q1 <- function(pkmn, colors) {
+q5 <- function(pokemon_combat_summary, color_data) {
   labels <- c("False"="Nonlegendary",
               "True"="Legendary")
   d <-
-    pkmn %>%
+    pokemon_combat_summary %>%
     combine_types() %>%
     mutate(type=factor(type)) %>%
     group_by(legendary, type) %>%
@@ -28,14 +67,14 @@ q1 <- function(pkmn, colors) {
     coord_cartesian(ylim=c(0, 1)) +
     theme(axis.text.x = element_text(angle=60, hjust=1))
   print(g)
-  ggsave("q1.png")
+  ggsave("q5.png")
 }
 
 # which stat plays the greatest role in winning?
 # speed, apparently
-q2 <- function(pkmn, colors) {
+q6 <- function(pokemon_combat_summary, color_data) {
   d <-
-    pkmn %>%
+    pokemon_combat_summary %>%
     combine_stats()
   g <-
     ggplot(d,
@@ -44,17 +83,17 @@ q2 <- function(pkmn, colors) {
     facet_grid(cols=vars(stat)) +
     geom_point(aes(color=type.1)) +
     geom_smooth(method='lm', formula=y~x) +
-    scale_color_manual(values=colors) +
+    scale_color_manual(values=color_data) +
     scale_y_continuous(label=scales::percent) +
     coord_cartesian(ylim=c(0, 1))
   print(g)
-  ggsave("q2.png")
+  ggsave("q6.png")
 }
 
 # is speed stat subject to Simpson paradox?
-q3 <- function(pkmn, colors) {
+q7 <- function(pokemon_combat_summary, color_data) {
   d <-
-    pkmn %>%
+    pokemon_combat_summary %>%
     combine_types()
   g <-
     ggplot(d,
@@ -63,9 +102,46 @@ q3 <- function(pkmn, colors) {
     facet_grid(cols=vars(type)) +
     geom_point(aes(color=type)) +
     geom_smooth(method='lm', formula=y~x) +
-    scale_color_manual(values=colors) +
+    scale_color_manual(values=color_data) +
     scale_y_continuous(label=scales::percent) +
     coord_cartesian(ylim=c(0, 1))
   print(g)
-  ggsave("q3.png")
+  ggsave("q7.png")
+}
+
+# what is the distribution of wins by stat difference?
+q8 <- function(combat_features) {
+  d <-
+    combat_features %>%
+    select(left_side_won,hp_diff:speed_diff) %>%
+    gather(key=stat,value=diff,hp_diff:speed_diff) %>%
+    mutate(diff=as.numeric(diff))
+  g <-
+    ggplot(d,
+           aes(x=diff,
+               group=left_side_won,
+               fill=left_side_won)) +
+    facet_grid(cols=vars(stat)) +
+    geom_density(alpha=0.5)
+  print(g)
+  ggsave("q8.png")
+}
+
+# can we model battles using domain knowledge?
+# not better than simple diffs of vars apparently
+q9 <- function(battle_emulation_features) {
+  d <- battle_emulation_features %>%
+    select(left_side_won,speed_diff,advantage_diff) %>%
+    gather(key=stat,value=diff,speed_diff,advantage_diff)
+  g <-
+    ggplot(d,
+           aes(x=diff,
+               group=left_side_won,
+               fill=left_side_won)) +
+    facet_grid(cols=vars(stat),
+               scales="free") +
+    xlim(-4,4) +
+    geom_density(alpha=0.5)
+  print(g)
+  ggsave("q9.png")
 }
