@@ -1,19 +1,23 @@
 library(dplyr)
 library(tidyr)
 
+from_data <- function(file_name) {
+  file.path("data",file_name)
+}
+
 import_combat_data <- function() {
-  combat_data <- tbl_df(read.csv("combats.csv", header=TRUE)) %>%
+  combat_data <- tbl_df(read.csv(from_data("combats.csv"), header=TRUE)) %>%
     rename_all(tolower)
 }
 
 import_pokemon_data <- function() {
-  tbl_df(read.csv("pokemon.csv", header=TRUE)) %>%
+  tbl_df(read.csv(from_data("pokemon.csv"), header=TRUE)) %>%
     rename(id=X.) %>%
     rename_all(tolower)
 }
 
 import_color_data <- function() {
-  color_data <- tbl_df(read.csv("colors.csv",
+  color_data <- tbl_df(read.csv(from_data("colors.csv"),
                           header=FALSE,
                           stringsAsFactors=FALSE)) %>%
     rename(type=V1, color=V2)
@@ -113,7 +117,16 @@ extract_combat_features <- function(combined_data) {
     mutate(spdef_diff=first_sp..def-second_sp..def) %>%
     select(-first_sp..def,-second_sp..def) %>%
     mutate(speed_diff=first_speed-second_speed) %>%
-    select(-first_speed,-second_speed)
+    select(-first_speed,-second_speed) %>%
+    rename(left_first_type=first_type.1) %>%
+    rename(left_second_type=second_type.1) %>%
+    rename(right_first_type=first_type.2) %>%
+    rename(right_second_type=second_type.2) %>%
+    mutate(left_first_type=as.numeric(left_first_type)) %>%
+    mutate(left_second_type=as.numeric(left_second_type)) %>%
+    mutate(right_first_type=as.numeric(right_first_type)) %>%
+    mutate(right_second_type=as.numeric(right_second_type)) %>%
+    mutate(left_side_won=as.numeric(left_side_won))
 }
 
 extract_battle_emulation_features <- function(combined_data) {

@@ -8,9 +8,35 @@ q1 <- function(pokemon_data) {
   id_unique_count
 }
 
+# How are they distributed by first type?
+q1.1 <- function(pokemon_data) {
+  type_counts <-
+    pokemon_data %>%
+    group_by(type.1) %>%
+    summarize(n())
+
+}
+
+# How frequently are types paired?
+q1.2 <- function(pokemon_data) {
+  two_types <-
+    pokemon_data %>%
+    filter(type.2!="") %>%
+    mutate(type.2=droplevels(type.2)) %>%
+    group_by(type.1, type.2) %>%
+    summarize(count=n()) %>%
+    complete(type.1, type.2, fill=list(count=0))
+  g <- ggplot(two_types, aes(x=type.1, y=type.2)) +
+    geom_tile(aes(fill=count)) +
+    geom_text(aes(label=count)) +
+    scale_fill_gradient2(low="white",
+                         high="midnightblue") +
+    theme(axis.text.x=element_text(angle=90))
+  print(g)
+}
+
 # What does the left-side-wins space look like?
 q2 <- function(combat_left_side_wins_table) {
-  graphics.off()
   par(pty="s")
   image(combat_left_side_wins_table,
         useRaster=TRUE,
