@@ -37,3 +37,4 @@ rsconnect/
 
 # MATLAB Autosave
 *.asv
+hyperparameter_optimization_results.mat
